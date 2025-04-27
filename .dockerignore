@@ -1,0 +1,32 @@
+# Ignore version control directories
+.git/
+
+# Python bytecode and caches
+__pycache__/
+*.py[cod]
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+env/
+
+# Logs and temporary files
+*.log
+*.tmp
+
+data/
+*.tsv
+*.json
+*.jsonl
+
+# IDE / Editor config
+.vscode/
+.idea/
+*.suo
+*.sw?l
+
+# OS-specific files
+.DS_Store
+Thumbs.db

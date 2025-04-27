@@ -1,0 +1,19 @@
+# k8s/pvc-filler.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: pvc-filler
+  namespace: advdaba-import
+spec:
+  restartPolicy: Never
+  containers:
+    - name: sleeper
+      image: busybox
+      command: ["sleep","3600"]
+      volumeMounts:
+        - name: import-data
+          mountPath: /data
+  volumes:
+    - name: import-data
+      persistentVolumeClaim:
+        claimName: import-pvc

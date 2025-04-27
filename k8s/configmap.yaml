@@ -1,0 +1,12 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: import-config
+data:
+  # URL and filename for your DBLP JSON
+  DBLP_JSON_URL: "http://vmrum.isc.heia-fr.ch/dblpv14.json"
+  DBLP_JSON_FILE: "dblpv14.json"
+  # optional limit (blank for “all”)
+  PROCESS_LIMIT: ""
+  # team name passed to to_tsvs_jsonl.py
+  TEAM_NAME: "AnthonyAtallah_HadilZenati"

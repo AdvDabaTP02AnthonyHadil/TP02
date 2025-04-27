@@ -1,0 +1,57 @@
+# Byte-compiled / optimized / DLL files
+__pycache__/
+*.py[cod]
+*$py.class
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+
+# Virtual environments
+venv/
+.env
+.env.*
+
+# Editor and IDE files
+.vscode/
+.idea/
+*.iml
+*.sublime-project
+*.sublime-workspace
+
+# OS generated files
+.DS_Store
+Thumbs.db
+
+# Neo4j Docker volumes
+neo4j/logs/
+neo4j/data/
+neo4j/import/
+
+# Large raw data files (downloaded from external sources)
+*.tar.gz
+*.json
+
+# Ignore performance summary if you manually wrote it and want to commit it
+!performance.json
+
+# Log files
+*.log
+
+# Temporary files
+*.tmp
+
+# Database export files
+*.csv
+*.tsv
+
+# Kubernetes and Docker configs
+# ignore other YAML but keep our k8s manifests
+*.yaml
+*.yml
+!k8s/*.yaml
+!k8s/*.yml
+
+# Ignore notebook checkpoints
+.ipynb_checkpoints/

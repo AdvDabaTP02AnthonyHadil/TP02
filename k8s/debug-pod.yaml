@@ -1,0 +1,12 @@
+# k8s/debug-pod.yaml
+apiVersion: v1
+kind: Pod
+metadata:
+  name: hostpath-debug
+  namespace: advdaba-import
+spec:
+  restartPolicy: Never
+  containers:
+  - name: debug
+    image: busybox
+    command: ["sh", "-c", "sleep 3600"]
