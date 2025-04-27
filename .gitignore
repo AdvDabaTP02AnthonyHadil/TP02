@@ -32,8 +32,9 @@ neo4j/import/
 # Large raw data files (downloaded from external sources)
 *.tar.gz
 *.json
+*.jsonl
 
-# Ignore performance summary if you manually wrote it and want to commit it
+# Performance summary JSON (include in repo)
 !performance.json
 
 # Log files
