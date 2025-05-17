@@ -25,27 +25,41 @@ else
   echo "ℹ️  Found local $JSON_IN, proceeding"
 fi
 
-# 4) generate TSVs directly from JSON
-echo "🔄 Generating TSVs from $JSON_IN"
-CMD=(python3 to_tsvs_from_json.py "$JSON_IN" "$TEAM_NAME")
-if [[ -n "$LIMIT" ]]; then
-  echo "🔢 Limiting to first $LIMIT records"
-  CMD+=("$LIMIT")
+# 4) generate TSVs directly from JSON if they don't already exist
+if [[ -f articles.tsv && -f authors.tsv && -f authored.tsv && -f cites.tsv ]]; then
+  echo "✅ TSV files already exist, skipping generation."
+else
+  echo "🔄 Generating TSVs from $JSON_IN"
+  CMD=(python3 to_tsvs_from_json.py "$JSON_IN" "$TEAM_NAME")
+  if [[ -n "$LIMIT" ]]; then
+    echo "🔢 Limiting to first $LIMIT records"
+    CMD+=("$LIMIT")
+  fi
+  "${CMD[@]}"
 fi
-"${CMD[@]}"
 
-# 5) import into Neo4j
+# 5) wait for Neo4j to be ready
+./wait-for-neo4j.sh neo4j-service 7687
+
+# 6) import into Neo4j in stages
 echo "🚀 Importing into Neo4j"
-# parse NEO4J_AUTH credentials
 IFS='/' read -r NEO4J_USER NEO4J_PASSWORD <<< "$NEO4J_AUTH"
-# construct cypher-shell command
 CY_CMD=(cypher-shell)
-# allow custom URI (e.g. bolt://neo4j-server:7687)
 if [[ -n "${NEO4J_URI-}" ]]; then
   CY_CMD+=("-a" "$NEO4J_URI")
 fi
-CY_CMD+=("-u" "$NEO4J_USER" "-p" "$NEO4J_PASSWORD" "--format" "plain" "--database" "neo4j")
-# execute with import script piped in
-"${CY_CMD[@]}" < import_flat.cypher
+CY_CMD+=("-u" "$NEO4J_USER" "-p" "$NEO4J_PASSWORD" "--format" "plain" "--database" "neo4j" "--encryption" "false")
+
+echo "📌 Applying constraints"
+"${CY_CMD[@]}" -f constraints.cypher
+
+echo "📥 Importing articles"
+"${CY_CMD[@]}" -f articles.cypher
+
+echo "📥 Importing authors"
+"${CY_CMD[@]}" -f authors.cypher
+
+echo "📥 Importing authored & cites"
+"${CY_CMD[@]}" -f authored_and_cites.cypher
 
 echo "✅ All done!"

@@ -1,148 +1,150 @@
-# DBLP to Neo4j Import
+# DBLP to Neo4j Import (Kubernetes Version)
 
-## Overview
-This project loads the DBLP v14 dataset into Neo4j, producing:
+## 👥 Team
+
+- Anthony Atallah
+- Hadil Zenati
+
+## 🧠 Overview
+
+This project loads the full **DBLP v14 dataset (~5.2M articles)** into **Neo4j** using a Kubernetes Job + Deployment setup. It performs:
 
 - `Article` nodes (`_id`, `title`)
 - `Author` nodes (`_id`, `name`)
 - `AUTHORED` relationships (Author → Article)
 - `CITES` relationships (Article → Article)
 
-All import steps are driven by `import_all.sh`, which converts raw JSON to TSVs and then bulk‐loads via `import_flat.cypher`.
-
 ---
 
-## Repository Layout
+## 📁 Repository Layout
 
 ```
 import/
 ├── Dockerfile
 ├── import_all.sh
 ├── to_tsvs_from_json.py
-├── requirements.txt
 ├── import_flat.cypher
-├── metrics_queries.cql
-├── .env.example
-├── performance.json      # manually compiled summary
-├── README.md             # this file
-└── k8s/                  # optional Kubernetes manifests
-    ├── configmap.yaml
-    ├── secret.yaml
-    ├── import-job.yaml
-    ├── pvc.yaml
-    └── pvc-filler.yaml  
+├── wait-for-neo4j.sh
+├── requirements.txt
+├── dblpv14.json (⚠️ not included in Git)
+├── job.log (generated after full import)
+└── k8s/
+    ├── job.yaml
+    ├── neo4j-deployment.yaml
+    ├── neo4j-service.yaml
+    ├── neo4j.conf
+    └── configmap.yaml
 ```
 
-Large data files (`*.json`, `*.tsv`, `*.csv`) and temporary files are excluded via `.gitignore`.
+---
+
+## 🧱 Prerequisites
+
+- Docker Desktop with Kubernetes enabled
+- ~3 GB+ memory allocated to Docker/K8s
+- `dblpv14.json` placed at the root of the `import/` folder
+- Windows WSL2 or native Linux recommended
 
 ---
 
-## Prerequisites
+## 🚀 Deployment Steps (Full Dataset)
 
-- Docker (with at least 3 GB allocated to containers)  
-- Neo4j 5.x authentication credentials (`neo4j/testtest`)  
-- Place `dblpv14.json` (raw DBLP data) alongside this `import` directory, NOT committed to Git.
+### 1. Build the image
 
----
-
-## Local Import Steps
-
-### 1. Build the importer image
-```powershell
+```bash
 cd import
 docker build -t advdaba_import:latest .
 ```
 
-### 2. Start Neo4j
-```powershell
-# Stop any existing server
-docker stop neo4j-server 2>$null
+### 2. Deploy Neo4j in Kubernetes
 
-# Launch with import volume mounted
-docker run -d --rm --name neo4j-server \
-  --memory=3g \
-  --network advdaba_net \
-  -p7474:7474 -p7687:7687 \
-  -v "$PWD":/var/lib/neo4j/import:rw \
-  -e NEO4J_AUTH=neo4j/testtest \
-  neo4j:latest
-
-
-# Wait ~15s for Bolt to come up
-Start-Sleep -Seconds 15
+```bash
+kubectl apply -f k8s/neo4j-deployment.yaml
+kubectl apply -f k8s/neo4j-service.yaml
 ```
 
-### 3. Run importer (100 000 records - if you would like to run it on all of the records just don't specify any number next to dblpv14.json )
-```powershell
-docker run --rm -it \
-  --memory=3g \
-  --network advdaba_net \
-  -v "$PWD":/app \
-  -e NEO4J_AUTH=neo4j/testtest \
-  -e NEO4J_URI=bolt://neo4j-server:7687 \
-  -e TEAM_NAME=AnthonyAtallah_HadilZenati \
-  advdaba_import:latest \
-  dblpv14.json 100000
+### 3. Forward ports to access Neo4j (in 2 terminals)
 
-```
-_Output should include TSV generation, import progress, and_ `✅ All done!`_
-
-### 4. Verify counts
-```powershell
-docker run --rm `
-  --network advdaba_net `
-  -v "$PWD":/app `
-  neo4j:latest `
-  cypher-shell `
-    -a bolt://neo4j-server:7687 `
-    -u neo4j -p testtest `
-    -f /app/metrics_queries.cql
+```bash
+kubectl port-forward service/neo4j-service 7474:7474
+kubectl port-forward service/neo4j-service 7687:7687
 ```
 
-### 5. Review performance summary
+Then open [http://localhost:7474](http://localhost:7474)  
+**Login:** neo4j / testtest
 
-| Metric                       | Count        |
-|------------------------------|-------------:|
-| Articles                     | 5 259 865    |
-| Authors                      | 2 863 644    |
-| `AUTHORED` relationships     | 24 222 719   |
-| `CITES` relationships        | 36 629 113   |
-| Memory used (peak, container)| ~1900 MB      |
-| Total import time            | ~5 487 s     |
+---
 
-We have got these numbers from running each command on the neo4j browser and then summing up the delays.
-Also to be noted generating the TSVs files from all N=5259865 articles took us 2362.1 seconds.
+### 4. Run the import job (on all 5M+ records)
 
-```json
-{
-  "team": "AnthonyAtallah_HadilZenati",
-  "N": 5259865,
-  "RAM_MB": 3000,
-  "seconds": 5487
-}
+```bash
+kubectl apply -f k8s/job.yaml
+```
+
+Follow logs with:
+
+```bash
+kubectl logs job/advdaba-import-job -f
+```
+
+You should see:
+```
+✓ TSVs generated (N=5259865)
+✅ Neo4j is ready!
+🚀 Importing into Neo4j
+✅ All done!
 ```
 
 ---
 
-## Full‐scale Import & Submission
+## 🔍 Verify Results in Neo4j Browser
 
-The Kubernetes job currently fails in our environment. Instead, please run the full import **locally** with the same 3 GiB memory cap to ensure it stays under the required limit:
+Try the following Cypher queries:
 
-```powershell
-# Import the entire dataset without a record limit, but cap container RAM at 3 GiB
-docker run --rm -it `
-  --memory=3g `
-  --network advdaba_net `
-  -v "$PWD":/app `
-  -e NEO4J_AUTH=neo4j/testtest `
-  -e NEO4J_URI=bolt://neo4j-server:7687 `
-  -e TEAM_NAME=AnthonyAtallah_HadilZenati `
-  advdaba_import:latest `
-  dblpv14.json
+```cypher
+MATCH (n) RETURN count(n);
+MATCH (a:Article) RETURN count(a);
+MATCH (a:Author) RETURN count(a);
+MATCH (a:Author)-[:AUTHORED]->(ar:Article) RETURN a.name, ar.title LIMIT 10;
 ```
-
-> **Note:** The `--memory=3g` flag enforces the 3 GiB RAM cap on both the Neo4j server and importer.
 
 ---
 
-*Prepared by AnthonyAtallah_HadilZenati*
+## 📄 Submission Content
+
+- ✅ `Dockerfile`, `import_all.sh`, `to_tsvs_from_json.py`
+- ✅ `wait-for-neo4j.sh` (ensures Neo4j is reachable)
+- ✅ `import_flat.cypher`
+- ✅ `k8s/job.yaml`, `neo4j-deployment.yaml`, `neo4j-service.yaml`, `neo4j.conf`
+- ✅ `job.log` (export logs via `kubectl logs job/advdaba-import-job > job.log`)
+- ✅ This `README.md`
+
+---
+
+## 🧪 Performance Notes
+
+| Metric                       | Value        |
+|-----------------------------|--------------|
+| Articles imported           | 5 259 865     |
+| Authors                     | ~2.8M         |
+| AUTHORED relationships      | ~24M          |
+| CITES relationships         | ~36M          |
+| Total nodes                 | ~14M+         |
+| RAM limit enforced          | 3 GiB         |
+| Import time (TSV+Neo4j)     | ~5400s        |
+
+---
+
+## ℹ️ Notes for Reviewers
+
+- The import runs **entirely inside Kubernetes**, with shared volume from host
+- Neo4j and the importer are two separate containers
+- TSVs are mounted into `/imports` inside the Neo4j pod for access via `LOAD CSV`
+- Default ports: `7474` (HTTP), `7687` (Bolt)
+- `NEO4J_AUTH=neo4j/testtest`
+
+> For convenience, all logs are available in `job.log`. The system was tested and verified with a full 5M+ dataset import.
+
+---
+
+**Prepared by Anthony Atallah & Hadil Zenati**

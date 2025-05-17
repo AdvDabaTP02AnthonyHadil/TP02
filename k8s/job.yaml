@@ -1,0 +1,30 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: advdaba-import-job
+spec:
+  template:
+    metadata:
+      name: advdaba-import-job
+    spec:
+      containers:
+        - name: import-job
+          image: advdaba_import:latest
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "./import_all.sh dblpv14.json"]
+          env:
+            - name: NEO4J_AUTH
+              value: "neo4j/testtest"
+            - name: TEAM_NAME
+              value: "TeamAnthonyHadil"
+            - name: NEO4J_URI
+              value: "bolt://neo4j-service:7687"
+          volumeMounts:
+            - name: dblp-volume
+              mountPath: /app
+      volumes:
+        - name: dblp-volume
+          hostPath:
+            path: /run/desktop/mnt/host/d/Users/antho/Sem1/TP02/import
+            type: Directory
+      restartPolicy: Never

@@ -4,18 +4,16 @@ CREATE CONSTRAINT article_id_unique
   FOR (a:Article)
   REQUIRE a._id IS UNIQUE;
 
-
 // Uniqueness constraint for authors
 CREATE CONSTRAINT author_id_unique
   IF NOT EXISTS
   FOR (x:Author)
   REQUIRE x._id IS UNIQUE;
 
-
 // Load articles.tsv
 CALL {
   LOAD CSV WITH HEADERS 
-    FROM 'file:///articles.tsv' AS row
+    FROM 'file:///imports/articles.tsv' AS row
     FIELDTERMINATOR '\t'
   WITH row
   WHERE row._id IS NOT NULL AND row._id <> ''
@@ -29,11 +27,10 @@ CALL {
 }
 IN TRANSACTIONS OF 5_000 ROWS;
 
-
 // Load authors.tsv
 CALL {
   LOAD CSV WITH HEADERS
-    FROM 'file:///authors.tsv' AS row
+    FROM 'file:///imports/authors.tsv' AS row
     FIELDTERMINATOR '\t'
   WITH row
   WHERE row._id IS NOT NULL AND row._id <> ''
@@ -47,11 +44,10 @@ CALL {
 }
 IN TRANSACTIONS OF 5_000 ROWS;
 
-
 // Load authored.tsv
 CALL {
   LOAD CSV WITH HEADERS
-    FROM 'file:///authored.tsv' AS row
+    FROM 'file:///imports/authored.tsv' AS row
     FIELDTERMINATOR '\t'
   WITH row
   WHERE row.article_id IS NOT NULL
@@ -67,13 +63,10 @@ CALL {
 }
 IN TRANSACTIONS OF 10_000 ROWS;
 
-
-
-
 // Load cites.tsv
 CALL {
   LOAD CSV WITH HEADERS
-    FROM 'file:///cites.tsv' AS row
+    FROM 'file:///imports/cites.tsv' AS row
     FIELDTERMINATOR '\t'
   WITH row
   WHERE row.article_id   IS NOT NULL

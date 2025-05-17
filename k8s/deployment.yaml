@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: advdaba-import
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: advdaba-import
+  template:
+    metadata:
+      labels:
+        app: advdaba-import
+    spec:
+      containers:
+        - name: advdaba-container
+          image: advdaba_import:latest
+          imagePullPolicy: IfNotPresent
+          command: ["sh", "-c", "./import_all.sh"]
+          env:
+            - name: NEO4J_AUTH
+              value: "neo4j/testtest"
+            - name: TEAM_NAME
+              value: "TeamAnthonyHadil"
